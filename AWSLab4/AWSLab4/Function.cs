@@ -1,3 +1,4 @@
+using Amazon.DynamoDBv2;
 using Amazon.Lambda.Core;
 using Amazon.Lambda.S3Events;
 
@@ -30,6 +31,8 @@ public class Function
 
     IAmazonRekognition RekognitionClient { get; }
 
+    IAmazonDynamoDB DynamoDB { get; }
+
     float MinConfidence { get; set; } = DEFAULT_MIN_CONFIDENCE;
 
     HashSet<string> SupportedImageTypes { get; } = new HashSet<string> { ".png", ".jpg", ".jpeg" };
@@ -45,6 +48,7 @@ public class Function
     {
         this.S3Client = new AmazonS3Client();
         this.RekognitionClient = new AmazonRekognitionClient();
+        this.DynamoDB = new AmazonDynamoDBClient();
 
         var environmentMinConfidence = System.Environment.GetEnvironmentVariable(MIN_CONFIDENCE_ENVIRONMENT_VARIABLE_NAME);
         if(!string.IsNullOrWhiteSpace(environmentMinConfidence))
@@ -72,11 +76,12 @@ public class Function
     /// <param name="s3Client"></param>
     /// <param name="rekognitionClient"></param>
     /// <param name="minConfidence"></param>
-    public Function(IAmazonS3 s3Client, IAmazonRekognition rekognitionClient, float minConfidence)
+    public Function(IAmazonS3 s3Client, IAmazonRekognition rekognitionClient, float minConfidence, IAmazonDynamoDB dynamoDB)
     {
         this.S3Client = s3Client;
         this.RekognitionClient = rekognitionClient;
         this.MinConfidence = minConfidence;
+        this.DynamoDB = dynamoDB;
     }
 
     /// <summary>
@@ -133,6 +138,17 @@ public class Function
                     TagSet = tags
                 }
             });
+
+            // an image with all labels with confidence > 90
+            var imageEntity = new ImageEntity
+            {
+                filename = record.S3.Object.Key,
+                tags = detectResponses.Labels.Where(l => l.Confidence > 90).ToDictionary(l => l.Name, l => l.Confidence.ToString())
+            };
+
+            // save all metadata for the image
+            var dbContext = new ImagesContext(this.DynamoDB);
+            await dbContext.SaveAsync(imageEntity);
         }
         return;
     }
