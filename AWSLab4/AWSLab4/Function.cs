@@ -19,7 +19,7 @@ public class Function
     /// <summary>
     /// The default minimum confidence used for detecting labels.
     /// </summary>
-    public const float DEFAULT_MIN_CONFIDENCE = 70f;
+    public const float DEFAULT_MIN_CONFIDENCE = 90f;
 
     /// <summary>
     /// The name of the environment variable to set which will override the default minimum confidence level.
