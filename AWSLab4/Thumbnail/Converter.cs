@@ -13,7 +13,7 @@ namespace Thumbnail
 {
     public class GcImagingOperations
     {
-        public static string GetConvertedImage(byte[] stream)
+        public static Stream GetConvertedImage(byte[] stream)
         {
             using (var bmp = new GcBitmap())
             {
@@ -39,20 +39,23 @@ namespace Thumbnail
                     TextAlignment.Center, ParagraphAlignment.Center, false);
                 }
                 //  Convert to grayscale 
-                bmp.ApplyEffect(GrayscaleEffect.Get(GrayscaleStandard.BT601));
+                //bmp.ApplyEffect(GrayscaleEffect.Get(GrayscaleStandard.BT601));
+
                 //  Resize to thumbnail 
                 var resizedImage = bmp.Resize(100, 100, InterpolationMode.NearestNeighbor);
+
                 return GetBase64(resizedImage);
             }
         }
         #region helper 
-        private static string GetBase64(GcBitmap bmp)
+        private static Stream GetBase64(GcBitmap bmp)
         {
-            using (MemoryStream m = new MemoryStream())
-            {
-                bmp.SaveAsPng(m);
-                return Convert.ToBase64String(m.ToArray());
-            }
+            MemoryStream m = new MemoryStream();
+               
+               bmp.SaveAsPng(m);
+                m.Flush();
+                m.Position = 0;
+                return m;
         }
         #endregion
     }

@@ -1,6 +1,7 @@
 using Amazon.Lambda.Core;
 using Amazon.Lambda.S3Events;
 using Amazon.S3;
+using Amazon.S3.Model;
 using Amazon.S3.Util;
 
 // Assembly attribute to enable the Lambda function's JSON input to be converted into a .NET class.
@@ -48,8 +49,52 @@ public class Function
 
         try
         {
-            var response = await this.S3Client.GetObjectMetadataAsync(s3Event.Bucket.Name, s3Event.Object.Key);
-            return response.Headers.ContentType;
+            var rs = await this.S3Client.GetObjectMetadataAsync(s3Event.Bucket.Name, s3Event.Object.Key);
+
+            //check if the file is image and in the upload folder
+            if (rs.Headers.ContentType.StartsWith("image/") && s3Event.Object.Key.StartsWith("uploads/"))
+            {
+                //new key for thumbnail
+                var newKey = $"thumbnails/{s3Event.Object.Key.Split("/").Last()}";
+                using (GetObjectResponse response = await S3Client.GetObjectAsync(
+                    s3Event.Bucket.Name,
+                    s3Event.Object.Key))
+                {
+                    using (Stream responseStream = response.ResponseStream)
+                    {
+                        using (StreamReader reader = new StreamReader(responseStream))
+                        {
+                            using (var memstream = new MemoryStream())
+                            {
+                                var buffer = new byte[512];
+                                var bytesRead = default(int);
+                                while ((bytesRead = reader.BaseStream.Read(buffer, 0, buffer.Length)) > 0)
+                                    memstream.Write(buffer, 0, bytesRead);
+
+                                // Perform image manipulation 
+                                using (var transformedImage = GcImagingOperations.GetConvertedImage(memstream.ToArray()))
+                                {
+
+                                    PutObjectRequest putRequest = new PutObjectRequest()
+                                    {
+                                        BucketName = s3Event.Bucket.Name,
+                                        Key = newKey,
+                                        ContentType = rs.Headers.ContentType,
+                                        InputStream = transformedImage,
+                                    };
+                                    await S3Client.PutObjectAsync(putRequest);
+
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+
+
+
+            return rs.Headers.ContentType;
         }
         catch(Exception e)
         {
