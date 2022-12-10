@@ -97,6 +97,7 @@ public class Function
     {
         var recordS3BucketName = input.detail.bucket.name;
         var recordS3ObjectKey = input.detail.@object.key;
+        if (recordS3ObjectKey.StartsWith("uploads/"))
         {
             if (!SupportedImageTypes.Contains(Path.GetExtension(recordS3ObjectKey)))
             {
