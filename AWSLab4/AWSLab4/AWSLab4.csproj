@@ -11,6 +11,7 @@
     <PublishReadyToRun>true</PublishReadyToRun>
   </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="AWSSDK.EventBridge" Version="3.7.100.33" />
     <PackageReference Include="AWSSDK.S3" Version="3.7.9.35" />
     <PackageReference Include="AWSSDK.Rekognition" Version="3.7.9.4" />
     <PackageReference Include="Amazon.Lambda.Core" Version="2.1.0" />

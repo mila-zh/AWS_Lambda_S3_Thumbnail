@@ -3,6 +3,7 @@ using Amazon.Lambda.S3Events;
 using Amazon.S3;
 using Amazon.S3.Model;
 using Amazon.S3.Util;
+using System.Net.Sockets;
 
 // Assembly attribute to enable the Lambda function's JSON input to be converted into a .NET class.
 [assembly: LambdaSerializer(typeof(Amazon.Lambda.Serialization.SystemTextJson.DefaultLambdaJsonSerializer))]
@@ -39,26 +40,23 @@ public class Function
     /// <param name="evnt"></param>
     /// <param name="context"></param>
     /// <returns></returns>
-    public async Task<string?> FunctionHandler(S3Event evnt, ILambdaContext context)
+    public async Task<string?> FunctionHandler(EventBridgeEvent input, ILambdaContext context)
     {
-        var s3Event = evnt.Records?[0].S3;
-        if(s3Event == null)
-        {
-            return null;
-        }
+        var s3EventBucketName = input.detail.bucket.name;
+        var s3EventObjectKey = input.detail.@object.key;
 
         try
         {
-            var rs = await this.S3Client.GetObjectMetadataAsync(s3Event.Bucket.Name, s3Event.Object.Key);
+            var rs = await this.S3Client.GetObjectMetadataAsync(s3EventBucketName, s3EventObjectKey);
 
             //check if the file is image and in the upload folder
-            if (rs.Headers.ContentType.StartsWith("image/") && s3Event.Object.Key.StartsWith("uploads/"))
+            if (rs.Headers.ContentType.StartsWith("image/") && s3EventObjectKey.StartsWith("uploads/"))
             {
                 //new key for thumbnail
-                var newKey = $"thumbnails/{s3Event.Object.Key.Split("/").Last()}";
+                var newKey = $"thumbnails/{s3EventObjectKey.Split("/").Last()}";
                 using (GetObjectResponse response = await S3Client.GetObjectAsync(
-                    s3Event.Bucket.Name,
-                    s3Event.Object.Key))
+                    s3EventBucketName,
+                    s3EventObjectKey))
                 {
                     using (Stream responseStream = response.ResponseStream)
                     {
@@ -77,7 +75,7 @@ public class Function
 
                                     PutObjectRequest putRequest = new PutObjectRequest()
                                     {
-                                        BucketName = s3Event.Bucket.Name,
+                                        BucketName = s3EventBucketName,
                                         Key = newKey,
                                         ContentType = rs.Headers.ContentType,
                                         InputStream = transformedImage,
@@ -91,14 +89,11 @@ public class Function
                 }
             }
 
-
-
-
             return rs.Headers.ContentType;
         }
         catch(Exception e)
         {
-            context.Logger.LogInformation($"Error getting object {s3Event.Object.Key} from bucket {s3Event.Bucket.Name}. Make sure they exist and your bucket is in the same region as this function.");
+            context.Logger.LogInformation($"Error getting object {s3EventObjectKey} from bucket {s3EventBucketName}. Make sure they exist and your bucket is in the same region as this function.");
             context.Logger.LogInformation(e.Message);
             context.Logger.LogInformation(e.StackTrace);
             throw;

@@ -7,8 +7,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AWSLab4", "AWSLab4\AWSLab4.
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Thumbnail", "Thumbnail\Thumbnail.csproj", "{9CEA7B6E-E13D-4D0B-9A6B-1A1ACA5CA598}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AWSServerlessLab4", "AWSServerlessLab4\AWSServerlessLab4.csproj", "{F2AA76A1-A7BF-4EF4-95FA-ED658F68111C}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -23,10 +21,6 @@ Global
 		{9CEA7B6E-E13D-4D0B-9A6B-1A1ACA5CA598}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9CEA7B6E-E13D-4D0B-9A6B-1A1ACA5CA598}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{9CEA7B6E-E13D-4D0B-9A6B-1A1ACA5CA598}.Release|Any CPU.Build.0 = Release|Any CPU
-		{F2AA76A1-A7BF-4EF4-95FA-ED658F68111C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{F2AA76A1-A7BF-4EF4-95FA-ED658F68111C}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{F2AA76A1-A7BF-4EF4-95FA-ED658F68111C}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{F2AA76A1-A7BF-4EF4-95FA-ED658F68111C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

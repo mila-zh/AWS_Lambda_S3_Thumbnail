@@ -93,79 +93,71 @@ public class Function
     /// <param name="input"></param>
     /// <param name="context"></param>
     /// <returns></returns>
-    public async Task FunctionHandler(S3Event input, ILambdaContext context)
+    public async Task FunctionHandler(EventBridgeEvent input, ILambdaContext context)
     {
-        try
+        var recordS3BucketName = input.detail.bucket.name;
+        var recordS3ObjectKey = input.detail.@object.key;
         {
-            foreach (var record in input.Records)
+            if (!SupportedImageTypes.Contains(Path.GetExtension(recordS3ObjectKey)))
             {
-                if (!SupportedImageTypes.Contains(Path.GetExtension(record.S3.Object.Key)))
-                {
-                    Console.WriteLine($"Object {record.S3.Bucket.Name}:{record.S3.Object.Key} is not a supported image type");
-                    continue;
-                }
-
-                Console.WriteLine($"Looking for labels in image {record.S3.Bucket.Name}:{record.S3.Object.Key}");
-                var detectResponses = await this.RekognitionClient.DetectLabelsAsync(new DetectLabelsRequest
-                {
-                    MinConfidence = MinConfidence,
-                    Image = new Image
-                    {
-                        S3Object = new Amazon.Rekognition.Model.S3Object
-                        {
-                            Bucket = record.S3.Bucket.Name,
-                            Name = record.S3.Object.Key
-                        }
-                    }
-                });
-
-                Console.WriteLine($"Detected {detectResponses.Labels.Count} labels.");
-
-                var tags = new List<Tag>();
-                foreach (var label in detectResponses.Labels)
-                {
-                    if (tags.Count < 10)
-                    {
-                        Console.WriteLine($"\tFound Label {label.Name} with confidence {label.Confidence}");
-                        tags.Add(new Tag { Key = label.Name, Value = label.Confidence.ToString() });
-                    }
-                    else
-                    {
-                        Console.WriteLine($"\tSkipped label {label.Name} with confidence {label.Confidence} because the maximum number of tags has been reached");
-                    }
-                }
-
-                Console.WriteLine($"Saving {tags.Count} tags into S3.");
-
-                await this.S3Client.PutObjectTaggingAsync(new PutObjectTaggingRequest
-                {
-                    BucketName = record.S3.Bucket.Name,
-                    Key = record.S3.Object.Key,
-                    Tagging = new Tagging
-                    {
-                        TagSet = tags
-                    }
-                });
-
-                Console.WriteLine($"Saving metadata into the Dynamo DB.");
-
-                // an image with all labels with confidence > 90
-                var imageEntity = new ImageEntity
-                {
-                    filename = record.S3.Object.Key,
-                    tags = detectResponses.Labels.Where(l => l.Confidence > 90).ToDictionary(l => l.Name, l => l.Confidence.ToString())
-                };
-
-                // save all metadata for the image
-                var dbContext = new ImagesContext(this.DynamoDB);
-                await dbContext.SaveAsync(imageEntity);
+                Console.WriteLine($"Object {recordS3BucketName}:{recordS3ObjectKey} is not a supported image type");
+                return;
             }
-            return;
-        }
-        catch (Exception x)
-        {
-            Console.WriteLine($"Error occurred with this message: {x.Message}");
-            return;
+
+            Console.WriteLine($"Looking for labels in image {recordS3BucketName}:{recordS3ObjectKey}");
+            var detectResponses = await this.RekognitionClient.DetectLabelsAsync(new DetectLabelsRequest
+            {
+                MinConfidence = MinConfidence,
+                Image = new Image
+                {
+                    S3Object = new Amazon.Rekognition.Model.S3Object
+                    {
+                        Bucket = recordS3BucketName,
+                        Name = recordS3ObjectKey
+                    }
+                }
+            });
+
+            Console.WriteLine($"Detected {detectResponses.Labels.Count} labels.");
+
+            var tags = new List<Tag>();
+            foreach (var label in detectResponses.Labels)
+            {
+                if (tags.Count < 10)
+                {
+                    Console.WriteLine($"\tFound Label {label.Name} with confidence {label.Confidence}");
+                    tags.Add(new Tag { Key = label.Name, Value = label.Confidence.ToString() });
+                }
+                else
+                {
+                    Console.WriteLine($"\tSkipped label {label.Name} with confidence {label.Confidence} because the maximum number of tags has been reached");
+                }
+            }
+
+            Console.WriteLine($"Saving {tags.Count} tags into S3.");
+
+            await this.S3Client.PutObjectTaggingAsync(new PutObjectTaggingRequest
+            {
+                BucketName = recordS3BucketName,
+                Key = recordS3ObjectKey,
+                Tagging = new Tagging
+                {
+                    TagSet = tags
+                }
+            });
+
+            Console.WriteLine($"Saving metadata into the Dynamo DB.");
+
+            // an image with all labels with confidence > 90
+            var imageEntity = new ImageEntity
+            {
+                filename = recordS3ObjectKey,
+                tags = detectResponses.Labels.Where(l => l.Confidence > 90).ToDictionary(l => l.Name, l => l.Confidence.ToString())
+            };
+
+            // save all metadata for the image
+            var dbContext = new ImagesContext(this.DynamoDB);
+            await dbContext.SaveAsync(imageEntity);
         }
     }
 }
